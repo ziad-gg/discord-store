@@ -1,12 +1,13 @@
 {
-  "name": "discord-store",
+  "name": "djs.db",
   "version": "1.0.0",
   "main": "index.js",
+  "types": "./index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "ziath_gg",
   "license": "ISC",
   "description": "",
   "dependencies": {
