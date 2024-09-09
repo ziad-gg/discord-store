@@ -2,8 +2,9 @@ import { Client as djsClient } from "discord.js";
 
 declare module "djs.db" {
     class Client {
-        constructor(client: djsClient, guildId?: string);
+        constructor(token: string, guildId?: string);
 
+        public init(): Promise<void>
         public findFirst(query: {}): { [key: string]: any, fetch: () => Promise<{}> }
         public findMany(query: {}): { [key: string]: any }
         public delete(query: {}): Promise<true | null>
