@@ -1,6 +1,6 @@
 {
   "name": "djs.db",
-  "version": "1.0.7",
+  "version": "1.0.9",
   "main": "src/index.js",
   "types": "./index.d.ts",
   "scripts": {

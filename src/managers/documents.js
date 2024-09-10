@@ -68,18 +68,12 @@ class DOCUMENT_STORE {
         }
     }
 
-    async read(id, output, chunk = -1) {
+    async read(id, chunk = -1, output = undefined) {
         const [guildId, channelId, messageId, customId] = id.split('-').map(decodeBase62);
 
         if (!guildId || !channelId || !messageId || !customId) {
             throw new Error('Invalid guild read parameters');
         }
-
-        if (!output) {
-            throw new Error('Output file path required');
-        }
-
-        !fs.existsSync(output) && fs.writeFileSync(output, '');
 
         const channel = await this.#guild.channels.fetch(channelId).catch(error => {
             console.error('Error fetching channel:', error);
@@ -95,8 +89,12 @@ class DOCUMENT_STORE {
 
         const chunks = [];
 
+        let name = null; // return
+
         for (let message of messages.values()) {
             if (!message.content.includes(customId)) continue;
+            output = output ?? message.content.split('-')[1];
+            name = message.content.split('-')[1];
 
             const attachment = message.attachments.first();
             if (attachment) {
@@ -132,6 +130,8 @@ class DOCUMENT_STORE {
             throw new Error(`No chunks were successfully downloaded.`)
         }
 
+        if (!fs.existsSync(output)) fs.writeFileSync(output, '');
+
         const writeStream = fs.createWriteStream(output, { flags: 'a' });
 
         downloadedChunks.forEach(chunk => {
@@ -140,12 +140,21 @@ class DOCUMENT_STORE {
 
         writeStream.end();
 
-        return chunks.length;
+        return {
+            total: chunk == -1 ? chunks.length : chunk,
+            name
+        };
     }
 
-    write(filePath, size = 24) {
+    write(filePath, options = { size: 24, cb: undefined, name: 'output' }) {
+        const size = options?.size || 24;
+        const cp = options?.cb;
+        const name = options?.name;
 
-        if (isNaN(size) || size > 25 || size < 5) throw new Error(`Maximum chunk size 25 & min: 5`);
+        if (!filePath) throw new Error(`File path is required`);
+        if (!size || isNaN(size) || size < 5 || size > 25) throw new Error(`Maximum chunk size 25 & min: 5`);
+        if (!name || typeof name != 'string') throw new Error('File must have a name');
+        if (name.includes('-')) throw new Error('invalid file name remove any -');
 
         return new Promise((resolve, reject) => {
             const id = BigInt.asUintN(64, BigInt(Date.now()) * 1_000_000n + BigInt(Math.floor(Math.random() * 1_000_000))).toString();
@@ -162,29 +171,36 @@ class DOCUMENT_STORE {
 
             readStream.on('data', (chunk) => {
                 const buffer = Buffer.from(chunk);
-                const attach = new discord.AttachmentBuilder(buffer, { name: `chunk-${chunks.length}.part` });
+                const attach = new discord.AttachmentBuilder(buffer, { name: `${name}-${chunks.length}.part` });
                 chunks.push(attach);
             });
 
             let firstMessage = null;
 
             readStream.on('end', async () => {
+                (cp && typeof cp == 'function') && cp(chunks.length, 0, false);
+
                 const channel = await this.#getChannelWithRoom(chunks.length);
                 const requests = [];
 
+                const send = async (chunk) => {
+                    const m = await channel.send({
+                        content: `${id}-${chunk.name}`,
+                        files: [chunk]
+                    });
+
+                    const chunkOrder = (+chunk.name.split('-')[1].split('.')[0]) + 1;
+                    (cp && typeof cp == 'function') && cp(chunks.length, chunkOrder, chunks.length == chunkOrder);
+
+                    return m;
+                };
+
                 for (const chunk of chunks) {
                     if (!firstMessage) {
-                        const m = await channel.send({
-                            content: `${id}-${chunk.name}`,
-                            files: [chunk]
-                        });
-
+                        const m = await send(chunk);
                         firstMessage = m;
                     } else {
-                        requests.push(channel.send({
-                            content: `${id}-${chunk.name}`,
-                            files: [chunk],
-                        }));
+                        requests.push(send(chunk));
                     }
                 };
 

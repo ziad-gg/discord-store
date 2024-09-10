@@ -41,8 +41,20 @@ class Client {
             });
         }
 
-        console.log(this.#guild.id);
         await this.#build();
+
+        return {
+            guild: {
+                name: this.#guild.name,
+                id: this.#guild.id,
+            },
+            client: {
+                name: this.client.user.username,
+                id: this.client.user.id,
+            },
+            guildId: this.#guild.id,
+            clientId: this.client.user.id,
+        }
     }
 
     async #build() {
@@ -64,20 +76,10 @@ class Client {
         this.#buildConfig = buildConfig;
 
         const json = new JSON_STORE(this.client, guild, jsonStore.id);
-        // await json.init();
         const document = new DOCUMENT_STORE(this.client, guild, documentStore.id);
         await document.init();
 
         this.document = document;
-
-        // const id = '1ttZD8xz438-1wLrgWBTF3j-1wLv3hVb1Zh-23uLuIgNeYh';
-        // console.time('read');
-        // await document.read(id);
-        // console.timeEnd('read');
-        // // console.time('Uploading 20MB');
-        // // const upload = await document.write('dump/7MB.png');
-        // // console.log(upload);
-        // // console.timeEnd('Uploading 20MB');
     };
 
 }

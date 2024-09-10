@@ -10,6 +10,8 @@ npm install djs.db
 yarn add djs.db
 ```
 
+# Uploading files
+
 ```js
 const { Client } = require('djs.db');
 require('dotenv').config();
@@ -17,20 +19,25 @@ require('dotenv').config();
 const client = new Client(process.env.TOKEN, process.env.GUILDID);
 
 async function main() {
-    await client.init();
+    const build = await client.init();
 
-    const video = 'video.mp4';
+    console.log(`Connected with ${build.clinet.name} to ${build.guild.name}`);
+
+    const video = 'dump/Dumo.mp4';
     const output = 'output.mp4';
+    
+    const id = await client.document.write(video, {
+        cb: progress,
+        name: output,
+    });
 
-    console.time('Video upload');
-    // write(filePath, ChunkSize); // maximum chunk size is 25 and minumum is 5 deafult is 24
-    const id = await client.document.write(video);
-    console.timeEnd('Video upload');
+    function progress(chunks, current, done) {
+        const percentage = (current / chunks) * 100;
+        console.log(`Progress: ${percentage.toFixed(2)}%, completed: ${done}`);
+    };
 
-    console.time('Video download');
-    // read(id, outPutPath, chunkIndex) // chunk index is -1 by deafult which will download all chunks
-    await client.document.read(id, output, 0);
-    console.timeEnd('Video download');
+    const chunksLength = await client.document.read(id);
+    console.log(chunksLength);
 };
 
 main();
