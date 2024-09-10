@@ -2,7 +2,7 @@ const discord = require('discord.js');
 const { default: axios } = require('axios');
 const fs = require('fs');
 
-const { compress, decompress, encodeBase62, decodeBase62 } = require('../utils/compresion.js');
+const { encodeBase62, decodeBase62 } = require('../utils/compresion.js');
 
 class DOCUMENT_STORE {
     static MAX_MESSAGES = 100;
@@ -178,6 +178,7 @@ class DOCUMENT_STORE {
             let firstMessage = null;
 
             readStream.on('end', async () => {
+                if (chunks.length > DOCUMENT_STORE.MAX_MESSAGES) throw new Error(`File is too large`);
                 (cp && typeof cp == 'function') && cp(chunks.length, 0, false);
 
                 const channel = await this.#getChannelWithRoom(chunks.length);
