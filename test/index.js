@@ -1,73 +1,65 @@
+const fs = require('fs');
+const path = require('path');
 const zlib = require('zlib');
 
-const jsonData = {
-    "name": "ziad",
-    "version": "1.0.0",
-    "description": "A simple REST API for managing a library system",
-    "fakedata": true,
-    "more": true,
-    "scripts": {
-        "start": "node server.js"
-    },
-    "author": "ziad",
-    "license": "ISC",
-    "dependencies": {
-        "dotenv": "^10.0.0",
-        "express": "^4.17.1",
-        "faker": "^5.5.3",
-        "jsonwebtoken": "^8.5.1",
-        "mongoose": "^5.13.2"
-    },
-    "devDependencies": {
-        "chai": "^4.3.4",
-        "mocha": "^8.4.0",
-        "nodemon": "^2.0.12"
-    },
-    "main": "server.js",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/ziadalquraishi/library-api.git"
-    },
-    "bugs": {
-        "url": "https://github.com/ziadalquraishi/library-api/issues"
-    },
-    "homepage": "https://github.com/ziadalquraishi/library-api#readme",
-    "keywords": [
-        "library",
-        "api",
-        "rest",
-        "node.js",
-        "express",
-        "mongoose",
-        "jwt",
-        "fakedata"
-    ]
+const compress = function (data) {
+    const gzipBuffer = zlib.gzipSync(data);
+
+    const compressedString = gzipBuffer.toString('base64');
+    return compressedString;
 };
 
-// Convert JSON to string
-const jsonString = JSON.stringify(jsonData);
+const decompress = function (compressedData) {
+    const buffer = Buffer.from(compressedData, 'base64');
+    const decompressedBuffer = zlib.gunzipSync(buffer);
+    return decompressedBuffer;
+};
 
-// Compress JSON string
-zlib.gzip(jsonString, (err, buffer) => {
-    if (err) {
-        console.error('Error during compression:', err);
-        return;
+function chunkFile(filePath) {
+    const chunkSize = 25 * 1024 * 1024; // 25 MB
+    const fileStats = fs.statSync(filePath); // Get file size
+    const totalSize = fileStats.size;
+    let start = 0;
+    let chunkIndex = 0;
+
+    const readStream = fs.createReadStream(filePath, { highWaterMark: chunkSize });
+
+    readStream.on('data', (chunk) => {
+        const chunkPath = path.join(__dirname, `chunk_${chunkIndex}.part`);
+        fs.writeFileSync(chunkPath, compress(chunk)); 
+        console.log(`Chunk ${chunkIndex + 1}: ${chunk.length} bytes written to ${chunkPath}`);
+        chunkIndex++;
+    });
+
+    readStream.on('end', () => {
+        console.log('File has been successfully split into chunks.');
+    });
+
+    readStream.on('error', (err) => {
+        console.error('Error reading the file:', err);
+    });
+}
+
+function recollectFile(outputFilePath, numberOfChunks) {
+    const writeStream = fs.createWriteStream(outputFilePath);
+
+    for (let chunkIndex = 0; chunkIndex < numberOfChunks; chunkIndex++) {
+        const chunkPath = path.join(__dirname, `chunk_${chunkIndex}.part`);
+        const compressedChunk = fs.readFileSync(chunkPath, 'utf-8');
+        const decompressedChunk = decompress(compressedChunk);
+
+        writeStream.write(decompressedChunk);
+        console.log(`Recollecting chunk ${chunkIndex + 1}`);
     }
 
-    // Convert buffer to base64 string
-    const compressedString = buffer.toString('base64');
-    console.log('Compressed string:', compressedString);
-
-    zlib.gunzip(buffer, (err, decompressedBuffer) => {
-        if (err) {
-            console.error('Error during decompression:', err);
-            return;
-        }
-
-        // Convert buffer to JSON string
-        const jsonString = decompressedBuffer.toString('utf-8');
-        const jsonData = JSON.parse(jsonString);
-
-        console.log('Decompressed JSON data:', jsonData);
+    writeStream.end(() => {
+        console.log(`File has been successfully reassembled into ${outputFilePath}`);
     });
-});
+}
+
+const numberOfChunks = 4; // Replace with actual number of chunks
+const outputFilePath = './recollected_largefile.zip';
+recollectFile(outputFilePath, numberOfChunks);
+
+// const filePath = './largefile.zip'; // Replace with your file path
+// chunkFile(filePath);

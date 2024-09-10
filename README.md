@@ -11,31 +11,27 @@ yarn add djs.db
 ```
 
 ```js
-const { Client, Schema } = require('djs.db');
+const { Client } = require('djs.db');
+require('dotenv').config();
 
-const client = new Client('BOT_TOKEN', 'GUILD_ID');
-await client.init();
+const client = new Client(process.env.TOKEN, process.env.GUILDID);
 
-const users = new Schema({
-    name: { type: 'string', key: true, required: true },
-    age: { type: 'number', key: false, required: false },
-    isStudent: { type: 'boolean', key: false, required: false }
-});
+async function main() {
+    await client.init();
 
-const data = await users.fill({
-    name: 'ziad',
-    age: 25,
-    isStudent: true
-}, client).save();
+    const video = 'video.mp4';
+    const output = 'output.mp4';
 
-console.log(data);
+    console.time('Video upload');
+    // write(filePath, ChunkSize); // maximum chunk size is 25 and minumum is 5 deafult is 24
+    const id = await client.document.write(video);
+    console.timeEnd('Video upload');
 
-const item = await client.findFirst({ name: 'ziad' }).fetch();
-console.log(item);
+    console.time('Video download');
+    // read(id, outPutPath, chunkIndex) // chunk index is -1 by deafult which will download all chunks
+    await client.document.read(id, output, 0);
+    console.timeEnd('Video download');
+};
 
-const items = client.findMany({ name: 'ziad' });
-console.log(items);
-
-// client.delete('ziad');
-// client.deleteAll();
+main();
 ```
