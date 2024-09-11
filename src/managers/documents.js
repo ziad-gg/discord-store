@@ -142,6 +142,7 @@ class DOCUMENT_STORE {
 
         return {
             total: chunk == -1 ? chunks.length : chunk,
+            chunks: chunks.length,
             name
         };
     }

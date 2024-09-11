@@ -7,7 +7,7 @@ declare module "djs.db" {
     }
 
     interface Document {
-        read(id: string, chunk?: number, output?: string): Promise<{ total: number, name: string }>, 
+        read(id: string, chunk?: number, output?: string): Promise<{ total: number, name: string, chunks: number }>, 
         write(path: string, options?: { size: number, cb: () => {}, name: string }): Promise<string>
     }
 }
